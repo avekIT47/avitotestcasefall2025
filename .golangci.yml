@@ -61,12 +61,3 @@ issues:
   max-issues-per-linter: 0
   max-same-issues: 0
 
-      linters:
-        - gosec
-        - errcheck
-    - path: tests/
-      linters:
-        - gosec
-        - errcheck
-  max-issues-per-linter: 0
-  max-same-issues: 0
