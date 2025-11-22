@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pr-reviewer-config
+  namespace: pr-reviewer
+data:
+  # Application config
+  log_level: "info"
+  environment: "production"
+  
+  # Redis config
+  redis_addr: "redis:6379"
+  redis_db: "0"
+  
+  # Rate limiting
+  rate_limit_rps: "100"
+  rate_limit_burst: "200"
+  
+  # Cache TTL
+  cache_teams_ttl: "300"
+  cache_stats_ttl: "60"
+  
+  # JWT config
+  jwt_expiration: "24h"
+

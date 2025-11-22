@@ -1,0 +1,18 @@
+{
+  "name": "PR Reviewer",
+  "short_name": "PR Reviewer",
+  "description": "Automatic PR reviewer assignment service",
+  "theme_color": "#3B82F6",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

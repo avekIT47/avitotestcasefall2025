@@ -1,0 +1,118 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: pr-reviewer
+  namespace: pr-reviewer
+  labels:
+    app: pr-reviewer
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: pr-reviewer
+  
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+    
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_pod_node_name]
+      targetLabel: node
+    
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'go_.*'
+      action: drop
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: pr-reviewer-alerts
+  namespace: pr-reviewer
+  labels:
+    app: pr-reviewer
+    release: prometheus
+spec:
+  groups:
+  - name: pr-reviewer
+    interval: 30s
+    rules:
+    # High error rate
+    - alert: HighErrorRate
+      expr: |
+        sum(rate(pr_reviewer_http_requests_total{status=~"5.."}[5m]))
+        /
+        sum(rate(pr_reviewer_http_requests_total[5m]))
+        > 0.01
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "High error rate detected"
+        description: "Error rate is {{ $value | humanizePercentage }} (threshold: 1%)"
+    
+    # High latency
+    - alert: HighLatency
+      expr: |
+        histogram_quantile(0.99,
+          sum(rate(pr_reviewer_http_request_duration_seconds_bucket[5m])) by (le, endpoint)
+        ) > 0.5
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High latency detected"
+        description: "P99 latency is {{ $value }}s on {{ $labels.endpoint }}"
+    
+    # Service down
+    - alert: ServiceDown
+      expr: up{job="pr-reviewer"} == 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Service is down"
+        description: "PR Reviewer service has been down for more than 2 minutes"
+    
+    # Database connection pool exhausted
+    - alert: DBConnectionPoolExhausted
+      expr: |
+        pr_reviewer_db_connections_in_use
+        /
+        pr_reviewer_db_connections_open
+        > 0.9
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Database connection pool near exhaustion"
+        description: "DB connection pool is {{ $value | humanizePercentage }} full"
+    
+    # High memory usage
+    - alert: HighMemoryUsage
+      expr: |
+        container_memory_usage_bytes{pod=~"pr-reviewer-.*"}
+        /
+        container_spec_memory_limit_bytes{pod=~"pr-reviewer-.*"}
+        > 0.9
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High memory usage"
+        description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.pod }}"
+    
+    # Pod restart
+    - alert: PodRestarting
+      expr: rate(kube_pod_container_status_restarts_total{pod=~"pr-reviewer-.*"}[15m]) > 0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Pod is restarting"
+        description: "Pod {{ $labels.pod }} has restarted {{ $value }} times in the last 15 minutes"
+

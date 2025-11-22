@@ -1,0 +1,217 @@
+.PHONY: help deps build run test test-integration test-coverage lint fmt docker-build docker-run docker-down clean migrate-up migrate-down load-test security-scan k8s-deploy k8s-delete
+
+# Variables
+APP_NAME=pr-reviewer
+VERSION?=$(shell git describe --tags --always --dirty)
+BUILD_TIME=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
+GO_VERSION=1.21
+DOCKER_REGISTRY?=ghcr.io
+DOCKER_IMAGE=$(DOCKER_REGISTRY)/$(APP_NAME)
+K8S_NAMESPACE=pr-reviewer
+
+# Build flags
+LDFLAGS=-ldflags "-X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME)"
+
+help: ## Show this help
+	@echo "Available targets:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+deps: ## Install dependencies
+	go mod download
+	go mod tidy
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+build: ## Build the application
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o bin/$(APP_NAME) cmd/server/main.go
+
+build-local: ## Build for local OS
+	go build $(LDFLAGS) -o bin/$(APP_NAME) cmd/server/main.go
+
+run: ## Run the application locally
+	go run cmd/server/main.go
+
+run-prod: ## Run with production configuration
+	ENVIRONMENT=production \
+	LOG_LEVEL=info \
+	go run cmd/server/main.go
+
+test: ## Run unit tests
+	go test -v -race -cover ./...
+
+test-integration: ## Run integration tests
+	go test -v -tags=integration ./tests/...
+
+test-coverage: ## Run tests with coverage report
+	go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+test-all: test test-integration ## Run all tests
+
+lint: ## Run linter
+	golangci-lint run --timeout=5m
+
+fmt: ## Format code
+	go fmt ./...
+	gofmt -s -w .
+
+security-scan: ## Run security scanners
+	@echo "Running gosec..."
+	@which gosec > /dev/null || go install github.com/securego/gosec/v2/cmd/gosec@latest
+	gosec -fmt=json -out=gosec-report.json ./...
+	@echo "Running trivy..."
+	@which trivy > /dev/null || echo "Please install trivy: https://github.com/aquasecurity/trivy"
+	trivy fs --security-checks vuln .
+
+# Docker targets
+docker-build: ## Build Docker image
+	docker build \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg BUILD_TIME=$(BUILD_TIME) \
+		-t $(APP_NAME):$(VERSION) \
+		-t $(APP_NAME):latest \
+		.
+
+docker-build-multiarch: ## Build multi-architecture Docker image
+	docker buildx build \
+		--platform linux/amd64,linux/arm64 \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg BUILD_TIME=$(BUILD_TIME) \
+		-t $(DOCKER_IMAGE):$(VERSION) \
+		-t $(DOCKER_IMAGE):latest \
+		--push \
+		.
+
+docker-run: ## Run Docker container
+	docker-compose up -d
+
+docker-run-prod: ## Run production Docker Compose stack
+	docker-compose -f docker-compose.prod.yaml up -d
+
+docker-logs: ## View Docker logs
+	docker-compose -f docker-compose.prod.yaml logs -f backend
+
+docker-down: ## Stop Docker containers
+	docker-compose -f docker-compose.prod.yaml down
+
+docker-clean: ## Clean Docker resources
+	docker-compose -f docker-compose.prod.yaml down -v
+	docker system prune -f
+
+# Database migrations
+migrate-up: ## Run database migrations up
+	migrate -path migrations -database "$(DATABASE_URL)" up
+
+migrate-down: ## Run database migrations down
+	migrate -path migrations -database "$(DATABASE_URL)" down
+
+migrate-create: ## Create new migration (usage: make migrate-create NAME=add_users_table)
+	migrate create -ext sql -dir migrations -seq $(NAME)
+
+migrate-force: ## Force migration version (usage: make migrate-force VERSION=1)
+	migrate -path migrations -database "$(DATABASE_URL)" force $(VERSION)
+
+# Load testing
+load-test: ## Run load tests
+	@echo "Running load test..."
+	chmod +x tests/load_test.sh
+	./tests/load_test.sh
+
+load-test-k6: ## Run k6 load tests
+	@which k6 > /dev/null || echo "Please install k6: https://k6.io/docs/getting-started/installation/"
+	k6 run tests/load_test.js
+
+# Kubernetes targets
+k8s-deploy: ## Deploy to Kubernetes
+	kubectl apply -f k8s/namespace.yaml
+	kubectl apply -f k8s/configmap.yaml
+	kubectl apply -f k8s/secrets.yaml
+	kubectl apply -f k8s/deployment.yaml
+	kubectl apply -f k8s/ingress.yaml
+	kubectl apply -f k8s/networkpolicy.yaml
+	kubectl apply -f k8s/servicemonitor.yaml
+
+k8s-delete: ## Delete from Kubernetes
+	kubectl delete -f k8s/servicemonitor.yaml --ignore-not-found
+	kubectl delete -f k8s/networkpolicy.yaml --ignore-not-found
+	kubectl delete -f k8s/ingress.yaml --ignore-not-found
+	kubectl delete -f k8s/deployment.yaml --ignore-not-found
+	kubectl delete -f k8s/secrets.yaml --ignore-not-found
+	kubectl delete -f k8s/configmap.yaml --ignore-not-found
+	kubectl delete -f k8s/namespace.yaml --ignore-not-found
+
+k8s-status: ## Check Kubernetes deployment status
+	kubectl get all -n $(K8S_NAMESPACE)
+	kubectl get ing -n $(K8S_NAMESPACE)
+
+k8s-logs: ## View Kubernetes logs
+	kubectl logs -f deployment/$(APP_NAME) -n $(K8S_NAMESPACE)
+
+k8s-describe: ## Describe Kubernetes deployment
+	kubectl describe deployment/$(APP_NAME) -n $(K8S_NAMESPACE)
+
+k8s-restart: ## Restart Kubernetes deployment
+	kubectl rollout restart deployment/$(APP_NAME) -n $(K8S_NAMESPACE)
+
+k8s-scale: ## Scale Kubernetes deployment (usage: make k8s-scale REPLICAS=5)
+	kubectl scale deployment/$(APP_NAME) --replicas=$(REPLICAS) -n $(K8S_NAMESPACE)
+
+# Monitoring
+metrics: ## View Prometheus metrics
+	curl http://localhost:8080/metrics
+
+health: ## Check service health
+	curl http://localhost:8080/health | jq
+
+health-live: ## Check liveness
+	curl http://localhost:8080/health/live
+
+health-ready: ## Check readiness
+	curl http://localhost:8080/health/ready
+
+# CI/CD helpers
+ci-lint: lint ## Run linting for CI
+	@echo "Linting passed!"
+
+ci-test: test test-integration ## Run tests for CI
+	@echo "All tests passed!"
+
+ci-build: build ## Build for CI
+	@echo "Build successful!"
+
+ci-security: security-scan ## Run security checks for CI
+	@echo "Security scan completed!"
+
+ci-all: ci-lint ci-test ci-security ci-build ## Run all CI checks
+	@echo "All CI checks passed!"
+
+# Utilities
+version: ## Show version
+	@echo "Version: $(VERSION)"
+	@echo "Build Time: $(BUILD_TIME)"
+	@echo "Go Version: $(GO_VERSION)"
+
+update-deps: ## Update dependencies
+	go get -u ./...
+	go mod tidy
+
+clean: ## Clean build artifacts
+	rm -rf bin/
+	rm -f coverage.out coverage.html
+	rm -f gosec-report.json
+	go clean
+
+install-tools: ## Install development tools
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+	go install github.com/securego/gosec/v2/cmd/gosec@latest
+	@echo "Development tools installed!"
+
+setup-dev: deps install-tools ## Setup development environment
+	@echo "Setting up development environment..."
+	docker-compose up -d db redis
+	sleep 5
+	make migrate-up
+	@echo "Development environment ready!"
+

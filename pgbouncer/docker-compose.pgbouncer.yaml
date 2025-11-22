@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: pr-reviewer-pgbouncer
+    restart: unless-stopped
+    
+    environment:
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/pr_reviewer
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 20
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      MAX_DB_CONNECTIONS: 100
+      AUTH_TYPE: md5
+    
+    ports:
+      - "6432:5432"
+    
+    depends_on:
+      - db
+    
+    networks:
+      - pr-reviewer-network
+    
+    healthcheck:
+      test: ["CMD", "psql", "-h", "localhost", "-p", "5432", "-U", "postgres", "-c", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  db:
+    image: postgres:15-alpine
+    container_name: pr-reviewer-db
+    restart: unless-stopped
+    
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: pr_reviewer
+    
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    
+    networks:
+      - pr-reviewer-network
+
+networks:
+  pr-reviewer-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+

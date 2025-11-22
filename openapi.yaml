@@ -1,0 +1,560 @@
+openapi: 3.0.3
+info:
+  title: PR Reviewer Assignment Service
+  description: Service for automatic assignment of reviewers for Pull Requests
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+paths:
+  /teams:
+    get:
+      summary: Get all teams
+      operationId: getTeams
+      responses:
+        '200':
+          description: List of teams
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Team'
+    
+    post:
+      summary: Create a new team
+      operationId: createTeam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTeamRequest'
+      responses:
+        '201':
+          description: Team created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '400':
+          description: Bad request
+        '409':
+          description: Team already exists
+
+  /teams/{teamId}:
+    get:
+      summary: Get team by ID
+      operationId: getTeamById
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Team details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '404':
+          description: Team not found
+    
+    delete:
+      summary: Delete team by ID
+      operationId: deleteTeam
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Team deleted successfully
+        '404':
+          description: Team not found
+        '500':
+          description: Internal server error
+
+  /users:
+    get:
+      summary: Get all users
+      operationId: getUsers
+      parameters:
+        - name: teamId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: isActive
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+    
+    post:
+      summary: Create a new user
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Bad request
+
+  /users/{userId}:
+    get:
+      summary: Get user by ID
+      operationId: getUserById
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+    
+    patch:
+      summary: Update user
+      operationId: updateUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+
+  /teams/{teamId}/users:
+    post:
+      summary: Add user to team
+      operationId: addUserToTeam
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: integer
+              required:
+                - userId
+      responses:
+        '204':
+          description: User added to team
+        '404':
+          description: Team or user not found
+        '409':
+          description: User already in team
+    
+    delete:
+      summary: Remove user from team
+      operationId: removeUserFromTeam
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: User removed from team
+        '404':
+          description: Team or user not found
+
+  /teams/{teamId}/users/deactivate:
+    post:
+      summary: Bulk deactivate users in team
+      operationId: bulkDeactivateUsers
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userIds:
+                  type: array
+                  items:
+                    type: integer
+              required:
+                - userIds
+      responses:
+        '200':
+          description: Users deactivated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deactivatedCount:
+                    type: integer
+                  reassignedPRCount:
+                    type: integer
+
+  /pull-requests:
+    get:
+      summary: Get pull requests
+      operationId: getPullRequests
+      parameters:
+        - name: userId
+          in: query
+          description: Filter by assigned reviewer
+          required: false
+          schema:
+            type: integer
+        - name: authorId
+          in: query
+          description: Filter by author
+          required: false
+          schema:
+            type: integer
+        - name: status
+          in: query
+          description: Filter by status
+          required: false
+          schema:
+            type: string
+            enum: [OPEN, MERGED]
+      responses:
+        '200':
+          description: List of pull requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PullRequest'
+    
+    post:
+      summary: Create a new pull request
+      operationId: createPullRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePullRequestRequest'
+      responses:
+        '201':
+          description: Pull request created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullRequest'
+        '400':
+          description: Bad request
+        '404':
+          description: Author not found
+
+  /pull-requests/{prId}:
+    get:
+      summary: Get pull request by ID
+      operationId: getPullRequestById
+      parameters:
+        - name: prId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Pull request details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullRequest'
+        '404':
+          description: Pull request not found
+
+  /pull-requests/{prId}/reviewers:
+    put:
+      summary: Reassign reviewer
+      operationId: reassignReviewer
+      parameters:
+        - name: prId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                oldReviewerId:
+                  type: integer
+                  description: ID of the reviewer to replace
+              required:
+                - oldReviewerId
+      responses:
+        '200':
+          description: Reviewer reassigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullRequest'
+        '400':
+          description: Bad request (e.g., PR is already merged)
+        '404':
+          description: Pull request or reviewer not found
+
+  /pull-requests/{prId}/merge:
+    post:
+      summary: Merge pull request
+      operationId: mergePullRequest
+      parameters:
+        - name: prId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Pull request merged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullRequest'
+        '404':
+          description: Pull request not found
+
+  /statistics:
+    get:
+      summary: Get assignment statistics
+      operationId: getStatistics
+      responses:
+        '200':
+          description: Statistics data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Statistics'
+
+  /health:
+    get:
+      summary: Health check endpoint
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+
+components:
+  schemas:
+    Team:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - createdAt
+    
+    CreateTeamRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+      required:
+        - name
+    
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        isActive:
+          type: boolean
+        teamId:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - isActive
+        - createdAt
+    
+    CreateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        teamId:
+          type: integer
+          nullable: true
+      required:
+        - name
+    
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        isActive:
+          type: boolean
+    
+    PullRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        authorId:
+          type: integer
+        status:
+          type: string
+          enum: [OPEN, MERGED]
+        reviewers:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+          maxItems: 2
+        createdAt:
+          type: string
+          format: date-time
+        mergedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - title
+        - authorId
+        - status
+        - reviewers
+        - createdAt
+    
+    CreatePullRequestRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        authorId:
+          type: integer
+      required:
+        - title
+        - authorId
+    
+    Statistics:
+      type: object
+      properties:
+        totalPRs:
+          type: integer
+        openPRs:
+          type: integer
+        mergedPRs:
+          type: integer
+        userStats:
+          type: array
+          items:
+            type: object
+            properties:
+              userId:
+                type: integer
+              userName:
+                type: string
+              assignmentCount:
+                type: integer
+        teamStats:
+          type: array
+          items:
+            type: object
+            properties:
+              teamId:
+                type: integer
+              teamName:
+                type: string
+              prCount:
+                type: integer

@@ -1,0 +1,194 @@
+### PR Reviewer API Examples
+### Используйте с REST Client расширением в VS Code или другим HTTP клиентом
+
+@baseUrl = http://localhost:8080
+@contentType = application/json
+
+### Health Check
+GET {{baseUrl}}/health
+
+### ========================================
+### TEAMS
+### ========================================
+
+### Get all teams
+GET {{baseUrl}}/teams
+
+### Create a new team
+POST {{baseUrl}}/teams
+Content-Type: {{contentType}}
+
+{
+  "name": "Backend Team"
+}
+
+### Get team by ID
+@teamId = 1
+GET {{baseUrl}}/teams/{{teamId}}
+
+### ========================================
+### USERS
+### ========================================
+
+### Get all users
+GET {{baseUrl}}/users
+
+### Get users by team
+GET {{baseUrl}}/users?teamId=1
+
+### Get only active users
+GET {{baseUrl}}/users?isActive=true
+
+### Create a new user
+POST {{baseUrl}}/users
+Content-Type: {{contentType}}
+
+{
+  "name": "Иван Иванов",
+  "teamId": 1
+}
+
+### Get user by ID
+@userId = 1
+GET {{baseUrl}}/users/{{userId}}
+
+### Update user
+PATCH {{baseUrl}}/users/{{userId}}
+Content-Type: {{contentType}}
+
+{
+  "name": "Иван Петров",
+  "isActive": false
+}
+
+### Add user to team
+POST {{baseUrl}}/teams/1/users
+Content-Type: {{contentType}}
+
+{
+  "userId": 2
+}
+
+### Remove user from team
+DELETE {{baseUrl}}/teams/1/users?userId=2
+
+### Bulk deactivate users in team
+POST {{baseUrl}}/teams/1/users/deactivate
+Content-Type: {{contentType}}
+
+{
+  "userIds": [2, 3, 4]
+}
+
+### ========================================
+### PULL REQUESTS
+### ========================================
+
+### Get all pull requests
+GET {{baseUrl}}/pull-requests
+
+### Get PRs by reviewer
+GET {{baseUrl}}/pull-requests?userId=2
+
+### Get PRs by author
+GET {{baseUrl}}/pull-requests?authorId=1
+
+### Get only open PRs
+GET {{baseUrl}}/pull-requests?status=OPEN
+
+### Create a new PR (автоматически назначит рецензентов)
+POST {{baseUrl}}/pull-requests
+Content-Type: {{contentType}}
+
+{
+  "title": "Добавить новую функциональность авторизации",
+  "authorId": 1
+}
+
+### Get PR by ID
+@prId = 1
+GET {{baseUrl}}/pull-requests/{{prId}}
+
+### Reassign reviewer
+PUT {{baseUrl}}/pull-requests/{{prId}}/reviewers
+Content-Type: {{contentType}}
+
+{
+  "oldReviewerId": 2
+}
+
+### Merge PR (идемпотентная операция)
+POST {{baseUrl}}/pull-requests/{{prId}}/merge
+
+### ========================================
+### STATISTICS
+### ========================================
+
+### Get statistics
+GET {{baseUrl}}/statistics
+
+### ========================================
+### WORKFLOW EXAMPLES
+### ========================================
+
+### Example 1: Создание команды с пользователями и PR
+
+### 1. Создать команду
+POST {{baseUrl}}/teams
+Content-Type: {{contentType}}
+
+{
+  "name": "Mobile Team"
+}
+
+### 2. Создать пользователей в команде
+POST {{baseUrl}}/users
+Content-Type: {{contentType}}
+
+{
+  "name": "Алексей Смирнов",
+  "teamId": 2
+}
+
+###
+POST {{baseUrl}}/users
+Content-Type: {{contentType}}
+
+{
+  "name": "Мария Петрова",
+  "teamId": 2
+}
+
+###
+POST {{baseUrl}}/users
+Content-Type: {{contentType}}
+
+{
+  "name": "Дмитрий Сидоров",
+  "teamId": 2
+}
+
+### 3. Создать PR от одного из пользователей
+POST {{baseUrl}}/pull-requests
+Content-Type: {{contentType}}
+
+{
+  "title": "Implement push notifications",
+  "authorId": 4
+}
+
+### Example 2: Массовая деактивация с переназначением
+
+### 1. Получить открытые PR с рецензентом
+GET {{baseUrl}}/pull-requests?userId=5&status=OPEN
+
+### 2. Деактивировать пользователя
+POST {{baseUrl}}/teams/2/users/deactivate
+Content-Type: {{contentType}}
+
+{
+  "userIds": [5]
+}
+
+### 3. Проверить, что PR были переназначены
+GET {{baseUrl}}/pull-requests?status=OPEN

@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pr_reviewer
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pr_reviewer_network
+
+  backend:
+    build: .
+    container_name: pr_reviewer_backend
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/pr_reviewer?sslmode=disable
+      SERVER_PORT: 8080
+      MIGRATIONS_PATH: file://migrations
+      LOG_LEVEL: info
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - pr_reviewer_network
+
+  frontend:
+    build: ./frontend
+    container_name: pr_reviewer_frontend
+    ports:
+      - "3000:80"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - pr_reviewer_network
+
+volumes:
+  postgres_data:
+
+networks:
+  pr_reviewer_network:
+    driver: bridge

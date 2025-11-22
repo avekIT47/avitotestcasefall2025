@@ -1,0 +1,52 @@
+run:
+  timeout: 5m
+  tests: true
+  build-tags:
+    - integration
+
+linters:
+  enable:
+    - govet
+    - gofmt
+    - goimports
+    - misspell
+    - ineffassign
+    - gosimple
+    - staticcheck
+    - unused
+    - gosec
+    - bodyclose
+    - dupl
+    - goconst
+    - gocyclo
+    - revive
+    - typecheck
+
+linters-settings:
+  govet:
+    check-shadowing: true
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: github.com/user/pr-reviewer
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+  gocyclo:
+    min-complexity: 15
+  dupl:
+    threshold: 100
+  gosec:
+    excludes:
+      - G104
+      - G304
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec
+        - dupl
+    - path: internal/migrations/
+      linters:
+        - gosec
