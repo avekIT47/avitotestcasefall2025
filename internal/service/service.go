@@ -242,30 +242,7 @@ func (s *Service) GetPullRequest(id int) (*models.PullRequest, error) {
 		return nil, err
 	}
 
-	// Обогащаем PR информацией об авторе
-	author, err := s.userRepo.GetByID(pr.AuthorID)
-	if err == nil {
-		// Загружаем команду автора
-		if author.TeamID != nil {
-			team, err := s.teamRepo.GetByID(*author.TeamID)
-			if err == nil {
-				author.Teams = []models.Team{*team}
-				pr.Team = team
-			}
-		}
-		pr.Author = author
-	}
-
-	// Обогащаем рецензентов информацией о командах
-	for i := range pr.Reviewers {
-		if pr.Reviewers[i].TeamID != nil {
-			team, err := s.teamRepo.GetByID(*pr.Reviewers[i].TeamID)
-			if err == nil {
-				pr.Reviewers[i].Teams = []models.Team{*team}
-			}
-		}
-	}
-
+	s.enrichPR(pr)
 	return pr, nil
 }
 
@@ -313,29 +290,7 @@ func (s *Service) MergePullRequest(id int) (*models.PullRequest, error) {
 		return nil, err
 	}
 
-	// Обогащаем PR информацией об авторе и команде
-	author, err := s.userRepo.GetByID(pr.AuthorID)
-	if err == nil {
-		if author.TeamID != nil {
-			team, err := s.teamRepo.GetByID(*author.TeamID)
-			if err == nil {
-				author.Teams = []models.Team{*team}
-				pr.Team = team
-			}
-		}
-		pr.Author = author
-	}
-
-	// Обогащаем рецензентов информацией о командах
-	for i := range pr.Reviewers {
-		if pr.Reviewers[i].TeamID != nil {
-			team, err := s.teamRepo.GetByID(*pr.Reviewers[i].TeamID)
-			if err == nil {
-				pr.Reviewers[i].Teams = []models.Team{*team}
-			}
-		}
-	}
-
+	s.enrichPR(pr)
 	return pr, nil
 }
 
@@ -346,29 +301,7 @@ func (s *Service) ClosePullRequest(id int) (*models.PullRequest, error) {
 		return nil, err
 	}
 
-	// Обогащаем PR информацией об авторе и команде
-	author, err := s.userRepo.GetByID(pr.AuthorID)
-	if err == nil {
-		if author.TeamID != nil {
-			team, err := s.teamRepo.GetByID(*author.TeamID)
-			if err == nil {
-				author.Teams = []models.Team{*team}
-				pr.Team = team
-			}
-		}
-		pr.Author = author
-	}
-
-	// Обогащаем рецензентов информацией о командах
-	for i := range pr.Reviewers {
-		if pr.Reviewers[i].TeamID != nil {
-			team, err := s.teamRepo.GetByID(*pr.Reviewers[i].TeamID)
-			if err == nil {
-				pr.Reviewers[i].Teams = []models.Team{*team}
-			}
-		}
-	}
-
+	s.enrichPR(pr)
 	return pr, nil
 }
 
@@ -568,6 +501,33 @@ func (s *Service) selectRandomReviewer(teamID, authorID int, excludeIDs []int) (
 	// Случайно выбираем одного
 	rand.Seed(time.Now().UnixNano())
 	return filtered[rand.Intn(len(filtered))], nil
+}
+
+// enrichPR обогащает PR информацией об авторе, команде и рецензентах
+func (s *Service) enrichPR(pr *models.PullRequest) {
+	// Обогащаем PR информацией об авторе
+	author, err := s.userRepo.GetByID(pr.AuthorID)
+	if err == nil {
+		// Загружаем команду автора
+		if author.TeamID != nil {
+			team, err := s.teamRepo.GetByID(*author.TeamID)
+			if err == nil {
+				author.Teams = []models.Team{*team}
+				pr.Team = team
+			}
+		}
+		pr.Author = author
+	}
+
+	// Обогащаем рецензентов информацией о командах
+	for i := range pr.Reviewers {
+		if pr.Reviewers[i].TeamID != nil {
+			team, err := s.teamRepo.GetByID(*pr.Reviewers[i].TeamID)
+			if err == nil {
+				pr.Reviewers[i].Teams = []models.Team{*team}
+			}
+		}
+	}
 }
 
 // getReviewerIDs извлекает ID рецензентов

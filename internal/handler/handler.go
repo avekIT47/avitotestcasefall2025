@@ -83,7 +83,7 @@ func (h *Handler) loggingMiddleware(next http.Handler) http.Handler {
 }
 
 // HealthCheck обрабатывает запрос проверки здоровья
-func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HealthCheck(w http.ResponseWriter, _ *http.Request) {
 	response := models.HealthResponse{
 		Status: "healthy",
 	}
@@ -91,7 +91,7 @@ func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetTeams возвращает все команды
-func (h *Handler) GetTeams(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetTeams(w http.ResponseWriter, _ *http.Request) {
 	teams, err := h.service.GetAllTeams()
 	if err != nil {
 		h.sendError(w, http.StatusInternalServerError, "Failed to get teams")
@@ -123,23 +123,9 @@ func (h *Handler) CreateTeam(w http.ResponseWriter, r *http.Request) {
 
 // GetTeam возвращает команду по ID
 func (h *Handler) GetTeam(w http.ResponseWriter, r *http.Request) {
-	teamID, err := h.getIntParam(r, "teamId")
-	if err != nil {
-		h.sendError(w, http.StatusBadRequest, "Invalid team ID")
-		return
-	}
-
-	team, err := h.service.GetTeam(teamID)
-	if err != nil {
-		if err.Error() == "team not found" {
-			h.sendError(w, http.StatusNotFound, "Team not found")
-		} else {
-			h.sendError(w, http.StatusInternalServerError, "Failed to get team")
-		}
-		return
-	}
-
-	h.sendJSON(w, http.StatusOK, team)
+	h.handleGetByID(w, r, "teamId", func(id int) (interface{}, error) {
+		return h.service.GetTeam(id)
+	}, "Team not found")
 }
 
 // DeleteTeam удаляет команду по ID
@@ -266,43 +252,16 @@ func (h *Handler) GetUsers(w http.ResponseWriter, r *http.Request) {
 // CreateUser создаёт нового пользователя
 func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var req models.CreateUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.sendError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	user, err := h.service.CreateUser(&req)
-	if err != nil {
-		if err.Error() == "team not found" {
-			h.sendError(w, http.StatusNotFound, err.Error())
-		} else {
-			h.sendError(w, http.StatusInternalServerError, "Failed to create user")
-		}
-		return
-	}
-
-	h.sendJSON(w, http.StatusCreated, user)
+	h.handleCreateEntity(w, r, &req, func() (interface{}, error) {
+		return h.service.CreateUser(&req)
+	}, map[string]int{"not found": http.StatusNotFound})
 }
 
 // GetUser возвращает пользователя по ID
 func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
-	userID, err := h.getIntParam(r, "userId")
-	if err != nil {
-		h.sendError(w, http.StatusBadRequest, "Invalid user ID")
-		return
-	}
-
-	user, err := h.service.GetUser(userID)
-	if err != nil {
-		if err.Error() == "user not found" {
-			h.sendError(w, http.StatusNotFound, "User not found")
-		} else {
-			h.sendError(w, http.StatusInternalServerError, "Failed to get user")
-		}
-		return
-	}
-
-	h.sendJSON(w, http.StatusOK, user)
+	h.handleGetByID(w, r, "userId", func(id int) (interface{}, error) {
+		return h.service.GetUser(id)
+	}, "User not found")
 }
 
 // UpdateUser обновляет пользователя
@@ -364,43 +323,16 @@ func (h *Handler) GetPullRequests(w http.ResponseWriter, r *http.Request) {
 // CreatePullRequest создаёт новый PR
 func (h *Handler) CreatePullRequest(w http.ResponseWriter, r *http.Request) {
 	var req models.CreatePullRequestRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.sendError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	pr, err := h.service.CreatePullRequest(&req)
-	if err != nil {
-		if err.Error() == "author not found" {
-			h.sendError(w, http.StatusNotFound, err.Error())
-		} else {
-			h.sendError(w, http.StatusInternalServerError, "Failed to create pull request")
-		}
-		return
-	}
-
-	h.sendJSON(w, http.StatusCreated, pr)
+	h.handleCreateEntity(w, r, &req, func() (interface{}, error) {
+		return h.service.CreatePullRequest(&req)
+	}, map[string]int{"not found": http.StatusNotFound})
 }
 
 // GetPullRequest возвращает PR по ID
 func (h *Handler) GetPullRequest(w http.ResponseWriter, r *http.Request) {
-	prID, err := h.getIntParam(r, "prId")
-	if err != nil {
-		h.sendError(w, http.StatusBadRequest, "Invalid PR ID")
-		return
-	}
-
-	pr, err := h.service.GetPullRequest(prID)
-	if err != nil {
-		if err.Error() == "PR not found" {
-			h.sendError(w, http.StatusNotFound, "Pull request not found")
-		} else {
-			h.sendError(w, http.StatusInternalServerError, "Failed to get pull request")
-		}
-		return
-	}
-
-	h.sendJSON(w, http.StatusOK, pr)
+	h.handleGetByID(w, r, "prId", func(id int) (interface{}, error) {
+		return h.service.GetPullRequest(id)
+	}, "Pull request not found")
 }
 
 // AddReviewer добавляет нового рецензента к PR
@@ -465,48 +397,20 @@ func (h *Handler) ReassignReviewer(w http.ResponseWriter, r *http.Request) {
 
 // MergePullRequest переводит PR в состояние MERGED
 func (h *Handler) MergePullRequest(w http.ResponseWriter, r *http.Request) {
-	prID, err := h.getIntParam(r, "prId")
-	if err != nil {
-		h.sendError(w, http.StatusBadRequest, "Invalid PR ID")
-		return
-	}
-
-	pr, err := h.service.MergePullRequest(prID)
-	if err != nil {
-		if err.Error() == "PR not found" {
-			h.sendError(w, http.StatusNotFound, "Pull request not found")
-		} else {
-			h.sendError(w, http.StatusInternalServerError, "Failed to merge pull request")
-		}
-		return
-	}
-
-	h.sendJSON(w, http.StatusOK, pr)
+	h.handleUpdateEntity(w, r, "prId", func(id int) (interface{}, error) {
+		return h.service.MergePullRequest(id)
+	}, "Pull request not found", "Failed to merge pull request")
 }
 
 // ClosePullRequest переводит PR в состояние CLOSED (закрыт без мерджа)
 func (h *Handler) ClosePullRequest(w http.ResponseWriter, r *http.Request) {
-	prID, err := h.getIntParam(r, "prId")
-	if err != nil {
-		h.sendError(w, http.StatusBadRequest, "Invalid PR ID")
-		return
-	}
-
-	pr, err := h.service.ClosePullRequest(prID)
-	if err != nil {
-		if err.Error() == "PR not found or already closed/merged" {
-			h.sendError(w, http.StatusNotFound, "Pull request not found or already closed/merged")
-		} else {
-			h.sendError(w, http.StatusInternalServerError, "Failed to close pull request")
-		}
-		return
-	}
-
-	h.sendJSON(w, http.StatusOK, pr)
+	h.handleUpdateEntity(w, r, "prId", func(id int) (interface{}, error) {
+		return h.service.ClosePullRequest(id)
+	}, "Pull request not found or already closed/merged", "Failed to close pull request")
 }
 
 // GetStatistics возвращает статистику
-func (h *Handler) GetStatistics(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetStatistics(w http.ResponseWriter, _ *http.Request) {
 	stats, err := h.service.GetStatistics()
 	if err != nil {
 		h.sendError(w, http.StatusInternalServerError, "Failed to get statistics")
@@ -550,4 +454,68 @@ func (h *Handler) sendJSON(w http.ResponseWriter, status int, data interface{}) 
 func (h *Handler) sendError(w http.ResponseWriter, status int, message string) {
 	response := map[string]string{"error": message}
 	h.sendJSON(w, status, response)
+}
+
+// handleGetByID обрабатывает запросы получения сущности по ID
+func (h *Handler) handleGetByID(w http.ResponseWriter, r *http.Request, paramName string, getFunc func(int) (interface{}, error), notFoundMsg string) {
+	id, err := h.getIntParam(r, paramName)
+	if err != nil {
+		h.sendError(w, http.StatusBadRequest, "Invalid "+paramName)
+		return
+	}
+
+	entity, err := getFunc(id)
+	if err != nil {
+		if err.Error() == "team not found" || err.Error() == "user not found" || err.Error() == "PR not found" {
+			h.sendError(w, http.StatusNotFound, notFoundMsg)
+		} else {
+			h.sendError(w, http.StatusInternalServerError, "Failed to get "+paramName)
+		}
+		return
+	}
+
+	h.sendJSON(w, http.StatusOK, entity)
+}
+
+// handleCreateEntity обрабатывает запросы создания сущности
+func (h *Handler) handleCreateEntity(w http.ResponseWriter, r *http.Request, req interface{}, createFunc func() (interface{}, error), errorMap map[string]int) {
+	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+		h.sendError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	entity, err := createFunc()
+	if err != nil {
+		for errMsg, status := range errorMap {
+			if strings.Contains(err.Error(), errMsg) {
+				h.sendError(w, status, err.Error())
+				return
+			}
+		}
+		h.sendError(w, http.StatusInternalServerError, "Failed to create entity")
+		return
+	}
+
+	h.sendJSON(w, http.StatusCreated, entity)
+}
+
+// handleUpdateEntity обрабатывает запросы обновления PR
+func (h *Handler) handleUpdateEntity(w http.ResponseWriter, r *http.Request, idParamName string, updateFunc func(int) (interface{}, error), notFoundMsg, errorMsg string) {
+	id, err := h.getIntParam(r, idParamName)
+	if err != nil {
+		h.sendError(w, http.StatusBadRequest, "Invalid "+idParamName)
+		return
+	}
+
+	entity, err := updateFunc(id)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			h.sendError(w, http.StatusNotFound, notFoundMsg)
+		} else {
+			h.sendError(w, http.StatusInternalServerError, errorMsg)
+		}
+		return
+	}
+
+	h.sendJSON(w, http.StatusOK, entity)
 }

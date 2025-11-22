@@ -12,6 +12,16 @@ import (
 	"github.com/user/pr-reviewer/internal/logger"
 )
 
+// contextKey is a custom type for context keys to avoid collisions
+type contextKey string
+
+const (
+	contextKeyUserID contextKey = "user_id"
+	contextKeyEmail  contextKey = "email"
+	contextKeyRole   contextKey = "role"
+	contextKeyTeamID contextKey = "team_id"
+)
+
 var (
 	ErrInvalidToken = errors.New("invalid token")
 	ErrExpiredToken = errors.New("token expired")
@@ -124,10 +134,10 @@ func (a *JWTAuth) Middleware(next http.Handler) http.Handler {
 		}
 
 		// Добавляем claims в контекст
-		ctx := context.WithValue(r.Context(), "user_id", claims.UserID)
-		ctx = context.WithValue(ctx, "email", claims.Email)
-		ctx = context.WithValue(ctx, "role", claims.Role)
-		ctx = context.WithValue(ctx, "team_id", claims.TeamID)
+		ctx := context.WithValue(r.Context(), contextKeyUserID, claims.UserID)
+		ctx = context.WithValue(ctx, contextKeyEmail, claims.Email)
+		ctx = context.WithValue(ctx, contextKeyRole, claims.Role)
+		ctx = context.WithValue(ctx, contextKeyTeamID, claims.TeamID)
 
 		a.logger.Debugw("Request authenticated", "user_id", claims.UserID, "path", r.URL.Path)
 
@@ -143,10 +153,10 @@ func (a *JWTAuth) OptionalMiddleware(next http.Handler) http.Handler {
 			parts := strings.Split(authHeader, " ")
 			if len(parts) == 2 && parts[0] == "Bearer" {
 				if claims, err := a.ValidateToken(parts[1]); err == nil {
-					ctx := context.WithValue(r.Context(), "user_id", claims.UserID)
-					ctx = context.WithValue(ctx, "email", claims.Email)
-					ctx = context.WithValue(ctx, "role", claims.Role)
-					ctx = context.WithValue(ctx, "team_id", claims.TeamID)
+					ctx := context.WithValue(r.Context(), contextKeyUserID, claims.UserID)
+					ctx = context.WithValue(ctx, contextKeyEmail, claims.Email)
+					ctx = context.WithValue(ctx, contextKeyRole, claims.Role)
+					ctx = context.WithValue(ctx, contextKeyTeamID, claims.TeamID)
 					r = r.WithContext(ctx)
 				}
 			}
@@ -160,7 +170,7 @@ func (a *JWTAuth) OptionalMiddleware(next http.Handler) http.Handler {
 func (a *JWTAuth) RequireRole(roles ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			role, ok := r.Context().Value("role").(string)
+			role, ok := r.Context().Value(contextKeyRole).(string)
 			if !ok {
 				a.sendError(w, errors.New("unauthorized"), http.StatusUnauthorized)
 				return
@@ -192,25 +202,25 @@ func (a *JWTAuth) RequireRole(roles ...string) func(http.Handler) http.Handler {
 
 // GetUserID извлекает user ID из контекста
 func GetUserID(ctx context.Context) (int64, bool) {
-	userID, ok := ctx.Value("user_id").(int64)
+	userID, ok := ctx.Value(contextKeyUserID).(int64)
 	return userID, ok
 }
 
 // GetUserEmail извлекает email из контекста
 func GetUserEmail(ctx context.Context) (string, bool) {
-	email, ok := ctx.Value("email").(string)
+	email, ok := ctx.Value(contextKeyEmail).(string)
 	return email, ok
 }
 
 // GetUserRole извлекает роль из контекста
 func GetUserRole(ctx context.Context) (string, bool) {
-	role, ok := ctx.Value("role").(string)
+	role, ok := ctx.Value(contextKeyRole).(string)
 	return role, ok
 }
 
 // GetTeamID извлекает team ID из контекста
 func GetTeamID(ctx context.Context) (int64, bool) {
-	teamID, ok := ctx.Value("team_id").(int64)
+	teamID, ok := ctx.Value(contextKeyTeamID).(int64)
 	return teamID, ok
 }
 

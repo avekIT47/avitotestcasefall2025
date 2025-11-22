@@ -80,11 +80,7 @@ func (r *StatisticsRepository) getUserStatistics() ([]models.UserStatistic, erro
 		stats = append(stats, stat)
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed to iterate user statistics: %w", err)
-	}
-
-	return stats, nil
+	return stats, rows.Err()
 }
 
 // getTeamStatistics возвращает статистику по командам
@@ -117,9 +113,5 @@ func (r *StatisticsRepository) getTeamStatistics() ([]models.TeamStatistic, erro
 		stats = append(stats, stat)
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed to iterate team statistics: %w", err)
-	}
-
-	return stats, nil
+	return stats, rows.Err()
 }

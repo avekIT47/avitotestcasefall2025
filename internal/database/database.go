@@ -7,8 +7,8 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/lib/pq"
+	_ "github.com/golang-migrate/migrate/v4/source/file" // file migration source driver
+	_ "github.com/lib/pq"                                // postgres driver
 )
 
 // DB представляет подключение к базе данных

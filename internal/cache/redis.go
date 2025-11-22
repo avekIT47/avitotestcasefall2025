@@ -147,8 +147,8 @@ func (c *RedisCache) Close() error {
 	return c.client.Close()
 }
 
-// CacheKey генерирует ключ кеша
-func CacheKey(parts ...string) string {
+// Key генерирует ключ кеша
+func Key(parts ...string) string {
 	key := ""
 	for i, part := range parts {
 		if i > 0 {

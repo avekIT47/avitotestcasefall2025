@@ -150,10 +150,10 @@ func ExampleDatabaseCall(cb *CircuitBreaker) error {
 }
 
 // Example: Использование для HTTP запросов
-func ExampleHTTPCall(cb *CircuitBreaker, url string) ([]byte, error) {
+func ExampleHTTPCall(cb *CircuitBreaker) ([]byte, error) {
 	result, err := cb.Execute(func() (interface{}, error) {
 		// HTTP запрос к внешнему API
-		// return http.Get(url)
+		// Example: return http.Get(url)
 		return nil, nil
 	})
 	if err != nil {
