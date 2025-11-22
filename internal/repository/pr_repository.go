@@ -26,7 +26,9 @@ func (r *PRRepository) Create(pr *models.PullRequest) error {
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	// Создаём PR
 	query := `
@@ -221,7 +223,9 @@ func (r *PRRepository) ReplaceReviewer(prID, oldReviewerID, newReviewerID int) e
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	// Проверяем, что PR не в статусе MERGED
 	var status models.PRStatus
@@ -364,7 +368,9 @@ func (r *PRRepository) AddReviewers(prID int, reviewers []models.User) error {
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	if err := r.addReviewersTx(tx, prID, reviewers); err != nil {
 		return err

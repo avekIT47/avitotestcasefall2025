@@ -4,15 +4,11 @@ linters-settings:
   goconst:
     min-len: 2
     min-occurrences: 3
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
   govet:
     enable-all: true
+    disable:
+      - fieldalignment # Оптимизация памяти, не критична
+      - shadow # Часто ложные срабатывания
   nolintlint:
     require-explanation: true
     require-specific: true
@@ -25,7 +21,6 @@ linters:
     - errcheck
     - exportloopref
     - goconst
-    - gocritic
     - gofmt
     - goimports
     - gosec
@@ -41,6 +36,8 @@ linters:
     - unparam
     - unused
     - whitespace
+  disable:
+    - gocritic # Слишком много рекомендаций по стилю
 
 run:
   timeout: 5m

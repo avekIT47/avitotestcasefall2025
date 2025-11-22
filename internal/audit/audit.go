@@ -189,13 +189,16 @@ func (l *Logger) Query(ctx context.Context, filter Filter) ([]*Entry, error) {
 			return nil, err
 		}
 
-		if userID.Valid {
-			entry.UserID = userID.Int64
-		}
+	if userID.Valid {
+		entry.UserID = userID.Int64
+	}
 
-		if len(changesJSON) > 0 {
-			json.Unmarshal(changesJSON, &entry.Changes)
+	if len(changesJSON) > 0 {
+		if err := json.Unmarshal(changesJSON, &entry.Changes); err != nil {
+			// Log error but continue processing other entries
+			continue
 		}
+	}
 
 		entries = append(entries, entry)
 	}

@@ -3,11 +3,16 @@ package service
 import (
 	"fmt"
 	"math/rand"
-	"time"
 
 	"github.com/user/pr-reviewer/internal/database"
 	"github.com/user/pr-reviewer/internal/models"
 	"github.com/user/pr-reviewer/internal/repository"
+)
+
+const (
+	errTeamNotFound = "team not found"
+	errUserNotFound = "user not found"
+	errPRNotFound   = "PR not found"
 )
 
 // Service предоставляет бизнес-логику приложения
@@ -64,7 +69,7 @@ func (s *Service) GetAllTeams() ([]*models.Team, error) {
 func (s *Service) DeleteTeam(id int) error {
 	// Проверяем существование команды
 	if _, err := s.teamRepo.GetByID(id); err != nil {
-		return fmt.Errorf("team not found")
+		return fmt.Errorf(errTeamNotFound)
 	}
 
 	return s.teamRepo.Delete(id)
@@ -84,7 +89,7 @@ func (s *Service) CreateUser(req *models.CreateUserRequest) (*models.User, error
 	if req.TeamID != nil {
 		t, err := s.teamRepo.GetByID(*req.TeamID)
 		if err != nil {
-			return nil, fmt.Errorf("team not found")
+			return nil, fmt.Errorf(errTeamNotFound)
 		}
 		team = t
 	}
@@ -161,13 +166,13 @@ func (s *Service) UpdateUser(id int, req *models.UpdateUserRequest) (*models.Use
 func (s *Service) AddUserToTeam(teamID, userID int) error {
 	// Проверяем существование команды
 	if _, err := s.teamRepo.GetByID(teamID); err != nil {
-		return fmt.Errorf("team not found")
+		return fmt.Errorf(errTeamNotFound)
 	}
 
 	// Проверяем существование пользователя
 	user, err := s.userRepo.GetByID(userID)
 	if err != nil {
-		return fmt.Errorf("user not found")
+		return fmt.Errorf(errUserNotFound)
 	}
 
 	// Проверяем, не находится ли пользователь уже в команде
@@ -461,6 +466,7 @@ func (s *Service) selectReviewers(teamID, authorID, maxCount int) ([]models.User
 	}
 
 	// Случайно выбираем maxCount рецензентов
+	// #nosec G404 - не криптографическая операция, случайность для выбора ревьюеров
 	rand.Shuffle(len(candidates), func(i, j int) {
 		candidates[i], candidates[j] = candidates[j], candidates[i]
 	})
@@ -499,7 +505,7 @@ func (s *Service) selectRandomReviewer(teamID, authorID int, excludeIDs []int) (
 	}
 
 	// Случайно выбираем одного
-	rand.Seed(time.Now().UnixNano())
+	// #nosec G404 - не криптографическая операция, случайность для выбора ревьюеров
 	return filtered[rand.Intn(len(filtered))], nil
 }
 

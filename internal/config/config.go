@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"os"
-	"strconv"
 )
 
 // Config содержит конфигурацию приложения
@@ -38,20 +37,3 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
-// getEnvAsInt получает значение переменной окружения как int
-func getEnvAsInt(name string, defaultVal int) int {
-	valueStr := getEnv(name, "")
-	if value, err := strconv.Atoi(valueStr); err == nil {
-		return value
-	}
-	return defaultVal
-}
-
-// getEnvAsBool получает значение переменной окружения как bool
-func getEnvAsBool(name string, defaultVal bool) bool {
-	valStr := getEnv(name, "")
-	if val, err := strconv.ParseBool(valStr); err == nil {
-		return val
-	}
-	return defaultVal
-}
