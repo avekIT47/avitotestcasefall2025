@@ -32,10 +32,14 @@ func TestMain(m *testing.M) {
 	// Настройка тестового окружения
 	os.Setenv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/pr_reviewer_test?sslmode=disable")
 
-	// Определяем путь к миграциям относительно текущей директории
+	// Определяем путь к миграциям
 	migrationsPath := os.Getenv("MIGRATIONS_PATH")
 	if migrationsPath == "" {
 		// По умолчанию ищем в родительской директории (относительно tests/)
+		migrationsPath = "file://../migrations"
+	} else if migrationsPath == "file://migrations" {
+		// Если указан относительный путь от корня проекта, преобразуем его
+		// относительно директории tests/
 		migrationsPath = "file://../migrations"
 	}
 	os.Setenv("MIGRATIONS_PATH", migrationsPath)

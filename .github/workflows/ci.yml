@@ -86,7 +86,6 @@ jobs:
       - name: Run integration tests
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/pr_reviewer_test?sslmode=disable
-          MIGRATIONS_PATH: file://migrations
         run: go test -v -tags=integration ./tests/...
 
       - name: Upload coverage to Codecov

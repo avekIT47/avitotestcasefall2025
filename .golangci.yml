@@ -36,8 +36,6 @@ linters:
     - unparam
     - unused
     - whitespace
-  disable:
-    - gocritic # Слишком много рекомендаций по стилю
 
 run:
   timeout: 5m
