@@ -97,4 +97,3 @@ func TestJWTAuth_Structure(t *testing.T) {
 		t.Error("expected 1 hour expiration")
 	}
 }
-

@@ -178,4 +178,3 @@ func TestVariousConfigurations(t *testing.T) {
 		})
 	}
 }
-

@@ -47,4 +47,3 @@ func TestStatisticsRepository_Structure(t *testing.T) {
 // - TestUserRepository_Create
 // - TestPRRepository_Create
 // etc.
-

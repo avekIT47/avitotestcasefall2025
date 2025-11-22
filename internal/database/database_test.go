@@ -22,4 +22,3 @@ func TestDB_Structure(t *testing.T) {
 		t.Error("expected nil DB")
 	}
 }
-

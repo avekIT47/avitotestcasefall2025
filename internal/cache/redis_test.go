@@ -88,4 +88,3 @@ func TestCacheInterface(t *testing.T) {
 	// Test that NoOpCache implements Cache interface
 	var _ Cache = (*NoOpCache)(nil)
 }
-

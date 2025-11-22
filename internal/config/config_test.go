@@ -105,4 +105,3 @@ func TestGetEnv(t *testing.T) {
 		t.Errorf("expected 'default', got '%s'", value)
 	}
 }
-

@@ -222,4 +222,3 @@ func TestBulkDeactivateResponse(t *testing.T) {
 		t.Errorf("expected 3 reassigned PRs, got %d", resp.ReassignedPRCount)
 	}
 }
-
