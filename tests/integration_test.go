@@ -5,8 +5,12 @@ package tests
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strconv"
 	"testing"
 
 	"github.com/gorilla/mux"
@@ -17,8 +21,6 @@ import (
 	"github.com/user/pr-reviewer/internal/handler"
 	"github.com/user/pr-reviewer/internal/models"
 	"github.com/user/pr-reviewer/internal/service"
-	"log"
-	"os"
 )
 
 var (
@@ -29,6 +31,7 @@ var (
 func TestMain(m *testing.M) {
 	// Настройка тестового окружения
 	os.Setenv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/pr_reviewer_test?sslmode=disable")
+	os.Setenv("MIGRATIONS_PATH", "file://../migrations")
 	
 	cfg, err := config.Load()
 	if err != nil {
@@ -100,7 +103,7 @@ func TestTeamCRUD(t *testing.T) {
 	assert.NotZero(t, team.ID)
 	
 	// Получение команды по ID
-	req, _ = http.NewRequest("GET", "/teams/"+string(rune(team.ID)), nil)
+	req, _ = http.NewRequest("GET", "/teams/"+strconv.FormatInt(team.ID, 10), nil)
 	response = executeRequest(req)
 	assert.Equal(t, http.StatusOK, response.Code)
 	
@@ -153,7 +156,7 @@ func TestUserCRUD(t *testing.T) {
 	}
 	body, _ = json.Marshal(updateData)
 	
-	req, _ = http.NewRequest("PATCH", "/users/"+string(rune(user.ID)), bytes.NewBuffer(body))
+	req, _ = http.NewRequest("PATCH", "/users/"+strconv.FormatInt(user.ID, 10), bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	response = executeRequest(req)
 	
@@ -192,7 +195,7 @@ func TestPullRequestFlow(t *testing.T) {
 	// Создание потенциальных рецензентов
 	for i := 1; i <= 3; i++ {
 		reviewerData := models.CreateUserRequest{
-			Name:   "Reviewer " + string(rune(i)),
+			Name:   fmt.Sprintf("Reviewer %d", i),
 			TeamID: &team.ID,
 		}
 		body, _ = json.Marshal(reviewerData)
@@ -222,7 +225,7 @@ func TestPullRequestFlow(t *testing.T) {
 	assert.LessOrEqual(t, len(pr.Reviewers), 2) // Максимум 2 рецензента
 	
 	// Merge Pull Request
-	req, _ = http.NewRequest("POST", "/pull-requests/"+string(rune(pr.ID))+"/merge", nil)
+	req, _ = http.NewRequest("POST", "/pull-requests/"+strconv.FormatInt(pr.ID, 10)+"/merge", nil)
 	response = executeRequest(req)
 	
 	assert.Equal(t, http.StatusOK, response.Code)
@@ -234,7 +237,7 @@ func TestPullRequestFlow(t *testing.T) {
 	assert.NotNil(t, mergedPR.MergedAt)
 	
 	// Проверка идемпотентности merge
-	req, _ = http.NewRequest("POST", "/pull-requests/"+string(rune(pr.ID))+"/merge", nil)
+	req, _ = http.NewRequest("POST", "/pull-requests/"+strconv.FormatInt(pr.ID, 10)+"/merge", nil)
 	response = executeRequest(req)
 	assert.Equal(t, http.StatusOK, response.Code)
 }
