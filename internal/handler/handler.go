@@ -13,6 +13,12 @@ import (
 	"github.com/user/pr-reviewer/internal/service"
 )
 
+const (
+	errTeamNotFound = "team not found"
+	errUserNotFound = "user not found"
+	errPRNotFound   = "PR not found"
+)
+
 // Handler обрабатывает HTTP запросы
 type Handler struct {
 	service *service.Service
@@ -137,7 +143,7 @@ func (h *Handler) DeleteTeam(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.DeleteTeam(teamID); err != nil {
-		if err.Error() == "team not found" {
+		if err.Error() == errTeamNotFound {
 			h.sendError(w, http.StatusNotFound, "Team not found")
 		} else {
 			h.sendError(w, http.StatusInternalServerError, "Failed to delete team")
@@ -167,7 +173,7 @@ func (h *Handler) AddUserToTeam(w http.ResponseWriter, r *http.Request) {
 	if err := h.service.AddUserToTeam(teamID, req.UserID); err != nil {
 		if err.Error() == "user already in team" {
 			h.sendError(w, http.StatusConflict, err.Error())
-		} else if err.Error() == "team not found" || err.Error() == "user not found" {
+		} else if err.Error() == errTeamNotFound || err.Error() == errUserNotFound {
 			h.sendError(w, http.StatusNotFound, err.Error())
 		} else {
 			h.sendError(w, http.StatusInternalServerError, "Failed to add user to team")
@@ -280,7 +286,7 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.service.UpdateUser(userID, &req)
 	if err != nil {
-		if err.Error() == "user not found" {
+		if err.Error() == errUserNotFound {
 			h.sendError(w, http.StatusNotFound, "User not found")
 		} else {
 			h.sendError(w, http.StatusInternalServerError, "Failed to update user")
@@ -382,7 +388,7 @@ func (h *Handler) ReassignReviewer(w http.ResponseWriter, r *http.Request) {
 
 	pr, err := h.service.ReassignReviewer(prID, &req)
 	if err != nil {
-		if err.Error() == "PR not found" || err.Error() == "reviewer not found in PR" {
+		if err.Error() == errPRNotFound || err.Error() == "reviewer not found in PR" {
 			h.sendError(w, http.StatusNotFound, err.Error())
 		} else if err.Error() == "cannot change reviewers of merged PR" {
 			h.sendError(w, http.StatusBadRequest, err.Error())
@@ -466,7 +472,7 @@ func (h *Handler) handleGetByID(w http.ResponseWriter, r *http.Request, paramNam
 
 	entity, err := getFunc(id)
 	if err != nil {
-		if err.Error() == "team not found" || err.Error() == "user not found" || err.Error() == "PR not found" {
+		if err.Error() == errTeamNotFound || err.Error() == errUserNotFound || err.Error() == errPRNotFound {
 			h.sendError(w, http.StatusNotFound, notFoundMsg)
 		} else {
 			h.sendError(w, http.StatusInternalServerError, "Failed to get "+paramName)

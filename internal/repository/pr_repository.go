@@ -112,7 +112,7 @@ func (r *PRRepository) GetAll(userID *int, authorID *int, status *string) ([]*mo
 	if status != nil {
 		whereClauses = append(whereClauses, fmt.Sprintf("p.status = $%d", argNum))
 		args = append(args, *status)
-		argNum++
+		// argNum++ не нужен, так как это последнее использование
 	}
 
 	query := baseQuery

@@ -75,7 +75,7 @@ func (r *UserRepository) GetAll(teamID *int, isActive *bool) ([]*models.User, er
 	if isActive != nil {
 		query += fmt.Sprintf(" AND is_active = $%d", argNum)
 		args = append(args, *isActive)
-		argNum++
+		// argNum++ не нужен, так как это последнее использование
 	}
 
 	query += " ORDER BY created_at DESC"
@@ -165,7 +165,7 @@ func (r *UserRepository) Update(id int, req *models.UpdateUserRequest) (*models.
 	if req.IsActive != nil {
 		setClauses = append(setClauses, fmt.Sprintf("is_active = $%d", argNum))
 		args = append(args, *req.IsActive)
-		argNum++
+		// argNum++ не нужен, так как это последнее использование
 	}
 
 	if len(setClauses) == 0 {

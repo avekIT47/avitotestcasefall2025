@@ -57,6 +57,10 @@ func TestUserModel(t *testing.T) {
 		t.Errorf("expected username 'testuser', got '%s'", user.Username)
 	}
 
+	if user.Name != "Test User" {
+		t.Errorf("expected name 'Test User', got '%s'", user.Name)
+	}
+
 	if !user.IsActive {
 		t.Error("expected user to be active")
 	}
@@ -80,6 +84,10 @@ func TestPullRequestModel(t *testing.T) {
 
 	if pr.Title != "Test PR" {
 		t.Errorf("expected title 'Test PR', got '%s'", pr.Title)
+	}
+
+	if pr.AuthorID != 1 {
+		t.Errorf("expected author ID 1, got %d", pr.AuthorID)
 	}
 
 	if pr.Status != PRStatusOpen {
@@ -107,6 +115,10 @@ func TestCreateUserRequest(t *testing.T) {
 
 	if req.Username != "newuser" {
 		t.Errorf("expected username 'newuser', got '%s'", req.Username)
+	}
+
+	if req.Name != "New User" {
+		t.Errorf("expected name 'New User', got '%s'", req.Name)
 	}
 
 	if req.TeamID == nil || *req.TeamID != 1 {
@@ -167,6 +179,10 @@ func TestUserStatistic(t *testing.T) {
 		t.Errorf("expected user ID 1, got %d", stat.UserID)
 	}
 
+	if stat.UserName != "Test User" {
+		t.Errorf("expected user name 'Test User', got '%s'", stat.UserName)
+	}
+
 	if stat.AssignmentCount != 5 {
 		t.Errorf("expected 5 assignments, got %d", stat.AssignmentCount)
 	}
@@ -181,6 +197,10 @@ func TestTeamStatistic(t *testing.T) {
 
 	if stat.TeamID != 1 {
 		t.Errorf("expected team ID 1, got %d", stat.TeamID)
+	}
+
+	if stat.TeamName != "Test Team" {
+		t.Errorf("expected team name 'Test Team', got '%s'", stat.TeamName)
 	}
 
 	if stat.PRCount != 10 {

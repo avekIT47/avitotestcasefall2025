@@ -27,18 +27,7 @@ func TestContextKeys(t *testing.T) {
 }
 
 func TestErrors(t *testing.T) {
-	if ErrInvalidToken == nil {
-		t.Error("ErrInvalidToken should not be nil")
-	}
-
-	if ErrExpiredToken == nil {
-		t.Error("ErrExpiredToken should not be nil")
-	}
-
-	if ErrMissingToken == nil {
-		t.Error("ErrMissingToken should not be nil")
-	}
-
+	// Проверяем сообщения ошибок (проверки на nil не нужны для var с errors.New)
 	if ErrInvalidToken.Error() != "invalid token" {
 		t.Errorf("unexpected error message: %s", ErrInvalidToken.Error())
 	}
@@ -85,12 +74,16 @@ func TestJWTAuth_Structure(t *testing.T) {
 		logger:          nil, // Would be a real logger in production
 	}
 
-	if auth == nil {
-		t.Error("expected non-nil JWTAuth")
-	}
-
-	if string(auth.secretKey) != "test-secret" {
+	// Проверка на nil не нужна для литерала структуры
+	expectedKey := []byte("test-secret")
+	if len(auth.secretKey) != len(expectedKey) {
 		t.Error("expected secret key to match")
+	}
+	for i, b := range expectedKey {
+		if auth.secretKey[i] != b {
+			t.Error("expected secret key to match")
+			break
+		}
 	}
 
 	if auth.tokenExpiration != 1*time.Hour {

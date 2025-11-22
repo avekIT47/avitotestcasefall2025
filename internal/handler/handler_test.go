@@ -17,8 +17,10 @@ func TestHandler_Structure(t *testing.T) {
 		logger:  &mockLogger{},
 	}
 
-	if h == nil {
-		t.Error("expected non-nil Handler")
+	// Проверка на nil не нужна для литерала структуры
+	// Проверим что logger установлен корректно
+	if h.logger == nil {
+		t.Error("expected non-nil logger")
 	}
 }
 

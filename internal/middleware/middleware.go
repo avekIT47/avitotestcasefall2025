@@ -18,12 +18,20 @@ const (
 	// Request ID header
 	RequestIDHeader = "X-Request-ID"
 
-	// Context keys
-	RequestIDKey = "request_id"
-	StartTimeKey = "start_time"
-
 	// Limits
 	MaxRequestBodySize = 1 << 20 // 1MB
+	
+	// Common strings
+	unknownRequestID = "unknown"
+)
+
+// Context keys types (to avoid SA1029)
+type contextKey string
+
+const (
+	// Context keys
+	RequestIDKey contextKey = "request_id"
+	StartTimeKey contextKey = "start_time"
 )
 
 // Middleware содержит все middleware для HTTP handlers
@@ -74,7 +82,7 @@ func (m *Middleware) Logging(next http.Handler) http.Handler {
 
 		requestID, ok := r.Context().Value(RequestIDKey).(string)
 		if !ok {
-			requestID = "unknown"
+			requestID = unknownRequestID
 		}
 		reqLogger := m.logger.WithRequestID(requestID)
 
@@ -131,7 +139,7 @@ func (m *Middleware) RateLimit(next http.Handler) http.Handler {
 		if !m.limiter.Allow(ip) {
 			requestID, ok := r.Context().Value(RequestIDKey).(string)
 			if !ok {
-				requestID = "unknown"
+				requestID = unknownRequestID
 			}
 			m.logger.WithRequestID(requestID).Warnw("Rate limit exceeded",
 				"ip", ip,
@@ -185,7 +193,7 @@ func (m *Middleware) RequestValidation(next http.Handler) http.Handler {
 			if !strings.HasPrefix(contentType, "application/json") {
 				requestID, ok := r.Context().Value(RequestIDKey).(string)
 				if !ok {
-					requestID = "unknown"
+					requestID = unknownRequestID
 				}
 				m.logger.WithRequestID(requestID).Warnw("Invalid content type",
 					"content_type", contentType,
@@ -203,23 +211,23 @@ func (m *Middleware) RequestValidation(next http.Handler) http.Handler {
 // Recovery восстанавливается после panic
 func (m *Middleware) Recovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if err := recover(); err != nil {
-				requestID := r.Context().Value(RequestIDKey)
-				if requestID == nil {
-					requestID = "unknown"
-				}
-
-				m.logger.WithRequestID(requestID.(string)).Errorw("Panic recovered",
-					"error", err,
-					"path", r.URL.Path,
-				)
-
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusInternalServerError)
-				fmt.Fprintf(w, `{"error":"Internal server error","request_id":"%s"}`, requestID)
+	defer func() {
+		if err := recover(); err != nil {
+			reqID, ok := r.Context().Value(RequestIDKey).(string)
+			if !ok || reqID == "" {
+				reqID = unknownRequestID
 			}
-		}()
+
+			m.logger.WithRequestID(reqID).Errorw("Panic recovered",
+				"error", err,
+				"path", r.URL.Path,
+			)
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, `{"error":"Internal server error","request_id":"%s"}`, reqID)
+		}
+	}()
 
 		next.ServeHTTP(w, r)
 	})

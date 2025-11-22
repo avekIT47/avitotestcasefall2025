@@ -8,7 +8,7 @@ import (
 	"github.com/user/pr-reviewer/internal/logger"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -21,7 +21,7 @@ type Config struct {
 	Enabled     bool
 	ServiceName string
 	Environment string
-	JaegerURL   string
+	OTLPURL     string // OTLP endpoint URL (например, http://localhost:4318/v1/traces)
 	SampleRate  float64
 }
 
@@ -43,12 +43,14 @@ func Init(cfg Config, log *logger.Logger) (*Tracer, error) {
 		}, nil
 	}
 
-	// Создаем Jaeger exporter
-	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(
-		jaeger.WithEndpoint(cfg.JaegerURL),
-	))
+	// Создаем OTLP HTTP exporter (поддерживает Jaeger через OTLP)
+	exp, err := otlptracehttp.New(
+		context.Background(),
+		otlptracehttp.WithEndpoint(cfg.OTLPURL),
+		otlptracehttp.WithInsecure(), // Для локальной разработки
+	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Jaeger exporter: %w", err)
+		return nil, fmt.Errorf("failed to create OTLP exporter: %w", err)
 	}
 
 	// Создаем resource с информацией о сервисе
@@ -81,7 +83,7 @@ func Init(cfg Config, log *logger.Logger) (*Tracer, error) {
 
 	log.Infow("Distributed tracing initialized",
 		"service", cfg.ServiceName,
-		"jaeger_url", cfg.JaegerURL,
+		"otlp_url", cfg.OTLPURL,
 		"sample_rate", cfg.SampleRate,
 	)
 

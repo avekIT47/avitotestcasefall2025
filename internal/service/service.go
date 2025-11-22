@@ -205,12 +205,11 @@ func (s *Service) CreatePullRequest(req *models.CreatePullRequestRequest) (*mode
 	// Автоматически назначаем рецензентов, если автор в команде
 	if author.TeamID != nil {
 		reviewers, err := s.selectReviewers(*author.TeamID, author.ID, 2)
-		if err != nil {
-			// Не блокируем создание PR, если не удалось выбрать рецензентов
-			// Просто создаём PR без рецензентов
-		} else {
+		if err == nil {
+			// Успешно выбрали рецензентов
 			pr.Reviewers = reviewers
 		}
+		// Если не удалось выбрать рецензентов, просто создаём PR без них
 
 		// Загружаем команду
 		team, err := s.teamRepo.GetByID(*author.TeamID)
