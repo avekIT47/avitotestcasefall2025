@@ -145,16 +145,16 @@ func (h *Health) Handler() http.HandlerFunc {
 func (h *Health) ReadinessHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-	response := h.Check(ctx)
+		response := h.Check(ctx)
 
-	// Readiness probe должен возвращать 200 только если все healthy
-	if response.Status == StatusHealthy {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ready"))
-	} else {
-		w.WriteHeader(http.StatusServiceUnavailable)
-		_, _ = w.Write([]byte("not ready"))
-	}
+		// Readiness probe должен возвращать 200 только если все healthy
+		if response.Status == StatusHealthy {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("ready"))
+		} else {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte("not ready"))
+		}
 	}
 }
 

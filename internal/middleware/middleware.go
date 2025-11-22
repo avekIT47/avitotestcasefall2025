@@ -67,16 +67,16 @@ func (m *Middleware) Logging(next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), StartTimeKey, startTime)
 
 		// Оборачиваем ResponseWriter для захвата статус кода
-	wrapped := &responseWriter{
-		ResponseWriter: w,
-		statusCode:     http.StatusOK,
-	}
+		wrapped := &responseWriter{
+			ResponseWriter: w,
+			statusCode:     http.StatusOK,
+		}
 
-	requestID, ok := r.Context().Value(RequestIDKey).(string)
-	if !ok {
-		requestID = "unknown"
-	}
-	reqLogger := m.logger.WithRequestID(requestID)
+		requestID, ok := r.Context().Value(RequestIDKey).(string)
+		if !ok {
+			requestID = "unknown"
+		}
+		reqLogger := m.logger.WithRequestID(requestID)
 
 		reqLogger.Infow("HTTP request started",
 			"method", r.Method,
@@ -179,15 +179,15 @@ func (m *Middleware) RequestValidation(next http.Handler) http.Handler {
 		// Проверка размера тела запроса
 		r.Body = http.MaxBytesReader(w, r.Body, MaxRequestBodySize)
 
-	// Проверка Content-Type для POST/PUT/PATCH
-	if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodPatch {
-		contentType := r.Header.Get("Content-Type")
-		if !strings.HasPrefix(contentType, "application/json") {
-			requestID, ok := r.Context().Value(RequestIDKey).(string)
-			if !ok {
-				requestID = "unknown"
-			}
-			m.logger.WithRequestID(requestID).Warnw("Invalid content type",
+		// Проверка Content-Type для POST/PUT/PATCH
+		if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodPatch {
+			contentType := r.Header.Get("Content-Type")
+			if !strings.HasPrefix(contentType, "application/json") {
+				requestID, ok := r.Context().Value(RequestIDKey).(string)
+				if !ok {
+					requestID = "unknown"
+				}
+				m.logger.WithRequestID(requestID).Warnw("Invalid content type",
 					"content_type", contentType,
 					"path", r.URL.Path,
 				)
