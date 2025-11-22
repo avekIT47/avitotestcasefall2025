@@ -259,3 +259,6 @@ func executeRequest(req *http.Request) *httptest.ResponseRecorder {
 	testRouter.ServeHTTP(rr, req)
 	return rr
 }
+
+	return rr
+}
